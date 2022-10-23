@@ -1,10 +1,9 @@
 import math
-from typing import Any, Dict
-from bson import ObjectId
+from typing import Any, Dict, List, Mapping
+from bson import ObjectId, Regex
 from app.models.posts_model import Post
 
 from app.models.users_model import User
-
 
 
 class PostService:
@@ -23,10 +22,11 @@ class PostService:
 
     # add comment to the post
     @staticmethod
-    async def CommentPost(data :Dict [Any, str], id:str ):
+    async def CommentPostMethod(data :Dict [Any, str], id:str ):
       try:        
+        # print("ps", data['value'])
         post = await Post.find_one({"_id": ObjectId(id)})
-        post.comments.append(data.value)
+        post.comments.append(data['value'])
         await post.save()
         return post
       except:
@@ -48,38 +48,42 @@ class PostService:
     @staticmethod
     async def GetPostUsersBySearch(searchQuery:str):
       try:
-        posts = await Post.find({"$or": {"title":searchQuery, "message":searchQuery}}).to_list()
-        users = await User.find({"$or": {"name":searchQuery, "bio":searchQuery}}).to_list()
+        posts = await Post.find_many({"$text": {"$search": searchQuery}}).to_list()
+        users = await User.find_many({"$text": {"$search": searchQuery}}).to_list()
         #response json({user, posts})
-        return {"posts":posts,"user": users} 
+        return {"user": users, "posts":posts} 
       except:
         return None
 
 
 
-    # GetAllPosts
+    # GetAllPosts Related To the User && With Pagaenation 
     @staticmethod
-    async def GetAllPosts(page:str, id:str):
+    async def GetAllPosts(pageStr:str, id:str):
      try:
-        if not page:
-          page = 1
-        
-        Limit = 2
-        startIndex = (int(page) - 1) * Limit;
+        page = 1
+        if pageStr:
+          page = int(pageStr)
 
+        Limit = 2
+        startIndex = (int(page) - 1) * Limit
         #...
         MainUser = await User.find_one({"_id": ObjectId(id)})
-        MainUser.following.append(MainUser.id)
+        MainUser.following.append(str(MainUser.id))        
         
-        total = await Post.count({"$or":{"creator":MainUser.following}})
-
-        Posts = await Post.find({"$or":{"creator":MainUser.following}}, 
-        limit=Limit, skip=startIndex, sort=({ "_id": -1 })).to_list()
+        MainStr = []
+        for uid in MainUser.following:
+          MainStr.append( {"creator" : uid })
+        
+        total = await Post.find({"$or":  MainStr  }).count()
+        Posts =  await Post.find({"$or":  MainStr  }).limit(Limit).skip(startIndex).to_list()
         
         return {
           "data": Posts, 
           "currentPage":page, 
           "numberOfPages": math.ceil(float(total) / float(Limit)) }
+
+
      except:
       return None
 

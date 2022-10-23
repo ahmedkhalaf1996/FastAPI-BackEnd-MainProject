@@ -16,9 +16,12 @@ PostRouter = APIRouter()
 
 # Create Post
 @PostRouter.post("",  dependencies=[Depends(JWTBearer())], status_code=status.HTTP_201_CREATED)
-async def createPost(post: Post):
-    # return {"post":post}
+async def createPost(request: Request,post: Post):
+    # return {"post":post}     
     try:
+        UserId = decodeJWT(request.headers["authorization"].split(" ")[1])["user_id"]
+        post.creator = UserId
+
         return await PostService.createPost(post)
         # respnse  json(createdPost)
     except:
@@ -30,7 +33,7 @@ async def createPost(post: Post):
 @PostRouter.post("/{id}/commentPost", status_code=status.HTTP_201_CREATED)
 async def comment(data :Dict [Any, str], id:str ):
      try: 
-        return await PostService.CommentPost(id, data)
+        return await PostService.CommentPostMethod( data, id)
         # response json(updatedPost)
      except:
         return JSONResponse(
@@ -39,16 +42,7 @@ async def comment(data :Dict [Any, str], id:str ):
             )
 
 
-# get onepost byid
-@PostRouter.get("/{id}", response_model=Post)
-async def getPost(id:str):
-    post = await PostService.GetPostById(id)
-    if not post:
-         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"message":"post not found"}
-        )       
-    return post
+
 
 # get Users&Posts by search
 @PostRouter.get("/search") 
@@ -61,6 +55,19 @@ async def getBySearch(*, searchQuery:Optional[str] = None):
             status_code=status.HTTP_400_BAD_REQUEST, 
             content={"Error": "No User Or Posts Result"}
         )
+
+
+
+# get onepost byid 
+@PostRouter.get("/{id}", response_model=Post)
+async def getPost(id:str):
+    post = await PostService.GetPostById(id)
+    if not post:
+         return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"message":"post not found"}
+        )       
+    return post
 
 # get many post by pageanion & related to the user
 @PostRouter.get("", status_code=status.HTTP_200_OK)

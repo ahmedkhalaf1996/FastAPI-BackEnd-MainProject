@@ -2,6 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from beanie import Document, Indexed
 from pydantic import Field, EmailStr
+import pymongo
 
 class User(Document):
     
@@ -15,4 +16,6 @@ class User(Document):
     
     class Collection:
         name = "users"
- 
+        indexes = [ # to help us search on user
+            [("name", pymongo.TEXT),("email", pymongo.TEXT)],
+        ]    
