@@ -3,7 +3,8 @@
 # activate source !! we should do this step each time we try to add lib
 # this will add our lib to our env file 
 >>  env/Scripts/activate
-
+On mac
+>> source  env/Scripts/activate
 # install main  lib's
 >> pip install fastapi uvicorn 
 
